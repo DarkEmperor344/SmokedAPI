@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.module }}-${{ matrix.arch }}
-          path: ${{ env.BUILD_DIR }}/${{ inputs.config }}/**/*.dll
+          path: D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI.dll
 
   package-project:
     name: Package the artifacts into a release zip
