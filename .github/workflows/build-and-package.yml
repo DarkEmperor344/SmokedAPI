@@ -51,8 +51,7 @@ jobs:
             ~/.nuget/packages
             ${{ env.BUILD_DIR }}/CMakeCache.txt
             
-      - name: Create build directory
-        run: mkdir -p "${{ env.BUILD_DIR }}"
+      
         
       - name: Install and cache the latest CMake
         uses: lukka/get-cmake@latest
