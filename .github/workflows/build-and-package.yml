@@ -30,7 +30,6 @@ jobs:
           - arch: 32
             platform: Win32
             term: amd64_x86
-
           - arch: 64
             platform: x64
             term: amd64
@@ -44,6 +43,14 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/CMakeLists.txt') }}
+          path: |
+            ~/.nuget/packages
+            ${{ env.BUILD_DIR }}/CMakeCache.txt
+
       - name: Install and cache the latest CMake
         uses: lukka/get-cmake@latest
 
@@ -52,24 +59,24 @@ jobs:
         with:
           arch: ${{ matrix.term }}
 
-      - name: Print build directory tree
-        run: tree /f ${{ env.BUILD_DIR }}
-
       - name: Generate build files
         run: cmake -G "Visual Studio 17 2022" -A "${{ matrix.platform }}" -B "${{ env.BUILD_DIR }}" -DMODULE=${{ matrix.module }}
 
       - name: Build the project
         run: cmake --build ${{ env.BUILD_DIR }} --config ${{ inputs.config }}
 
+      - name: Print build outputs
+        run: tree /f ${{ env.BUILD_DIR }}
+
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.module }}-${{ matrix.arch }}
-          path: ${{ env.BUILD_DIR }}\${{ inputs.config }}\*.dll
+          path: ${{ env.BUILD_DIR }}/${{ inputs.config }}/**/*.dll
 
   package-project:
     name: Package the artifacts into a release zip
-    if: startsWith(github.ref, 'refs/tags/')
+    if: always() && startsWith(github.ref, 'refs/tags/')  # Run even if builds fail
     runs-on: ubuntu-latest
     needs: build-project
     permissions:
@@ -78,26 +85,10 @@ jobs:
       - name: Setup version tag
         run: echo "VERSION_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      - name: Setup zip name
-        env:
-          PROJECT_NAME: ${{ github.event.repository.name }}
-        run: echo "ZIP_NAME=$PROJECT_NAME-$VERSION_TAG.zip" >> $GITHUB_ENV
-
-      - name: Install required tools
-        run: |
-          sudo apt update
-          sudo apt install zip tree
-
-      - name: Check out repository code
-        uses: actions/checkout@v4
-
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: Print artifact tree
-        run: tree artifacts
 
       - name: Make release zip
         run: ${{ inputs.zip_command }}
@@ -105,10 +96,4 @@ jobs:
       - name: Create a release draft
         uses: softprops/action-gh-release@v1
         with:
-          body: '# 📑 Changelog'
-          draft: true
-          prerelease: false
           files: ${{ env.ZIP_NAME }}
-          name: Release ${{ env.VERSION_TAG }}
-          tag_name: ${{ env.VERSION_TAG }}
-          fail_on_unmatched_files: true
