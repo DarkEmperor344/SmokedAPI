@@ -66,12 +66,26 @@ jobs:
         shell: cmd
         run: |
          cmake -G "Visual Studio 17 2022" ^
-         -A x64 ^
-         -B "D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI" ^
+         -A "${{ matrix.platform }}" ^  # Use matrix variable instead of hardcoded x64
+         -B "${{ env.BUILD_DIR }}" ^  # Use environment variable
+         -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="${{ env.BUILD_DIR }}/${{ inputs.config }}" ^  # Force output location
          -DCMAKE_POLICY_DEFAULT_CMP0048=NEW ^
          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
-         -DMODULE=SmokeAPI
+         -DMODULE=${{ matrix.module }}
+         
+      - name: Build project
+        run: cmake --build "${{ env.BUILD_DIR }}" --config ${{ inputs.config }} --verbose
 
+      - name: Verify DLLs exist
+        shell: cmd
+        run: |
+          echo "Checking for DLLs in ${{ env.BUILD_DIR }}\${{ inputs.config }}"
+          dir "${{ env.BUILD_DIR }}\${{ inputs.config }}"
+          if not exist "${{ env.BUILD_DIR }}\${{ inputs.config }}\*.dll" (
+            echo "ERROR: No DLLs found!"
+            exit 1
+          )
+          
       - name: Print build outputs
         run: tree /f ${{ env.BUILD_DIR }}
 
@@ -79,8 +93,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.module }}-${{ matrix.arch }}
-          path: ${{ env.BUILD_DIR }}/${{ inputs.config }}/**/*.dll
-
+          path: ${{ env.BUILD_DIR }}/${{ inputs.config }}/*.dll
+          if-no-files-found: error
+          
   package-project:
     name: Package the artifacts into a release zip
     if: always() && startsWith(github.ref, 'refs/tags/')  # Run even if builds fail
