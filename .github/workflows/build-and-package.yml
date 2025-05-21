@@ -52,7 +52,8 @@ jobs:
             ${{ env.BUILD_DIR }}/CMakeCache.txt
             
       - name: Create build directory
-        run: mkdir -p "${{ env.BUILD_DIR }}"
+        shell: pwsh
+        run: New-Item -Path "${{ env.BUILD_DIR }}" -ItemType Directory -Force | Out-Null
         
       - name: Install and cache the latest CMake
         uses: lukka/get-cmake@latest
@@ -61,6 +62,15 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.term }}
+
+      - name: Generate build files
+        shell: cmd
+        run: |
+         -A x64 ^
+         -B "D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI" ^
+         -DCMAKE_POLICY_DEFAULT_CMP0048=NEW ^
+         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
+         -DMODULE=SmokeAPI
 
       - name: Print build outputs
         run: tree /f ${{ env.BUILD_DIR }}
