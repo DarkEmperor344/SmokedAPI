@@ -67,13 +67,12 @@ jobs:
       - name: Generate build files
         shell: cmd
         run: |
-         cmake -G "Visual Studio 17 2022" ^
-         -A "${{ matrix.platform }}" ^  # Use matrix variable instead of hardcoded x64
-         -B "${{ env.BUILD_DIR }}" ^  # Use environment variable
-         -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="${{ env.BUILD_DIR }}/${{ inputs.config }}" ^  # Force output location
-         -DCMAKE_POLICY_DEFAULT_CMP0048=NEW ^
-         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
-         -DMODULE=${{ matrix.module }}
+          cmake -G "Visual Studio 17 2022" ^
+          -A x64 ^
+          -B "D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI" ^
+          -DCMAKE_POLICY_DEFAULT_CMP0048=NEW ^
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
+          -DMODULE=SmokeAPI
          
       - name: Build project
         run: cmake --build "${{ env.BUILD_DIR }}" --config ${{ inputs.config }} --verbose
