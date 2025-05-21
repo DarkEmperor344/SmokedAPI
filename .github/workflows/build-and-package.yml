@@ -25,7 +25,7 @@ jobs:
     strategy:
       matrix:
         module: ${{ fromJson(inputs.modules) }}
-        arch: [32, 64]
+        arch: [ 32, 64 ]
         include:
           - arch: 32
             platform: Win32
@@ -42,29 +42,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          
-      - name: Setup build directories
-        shell: cmd
-        run: |
-         mkdir "D:\a\SmokedAPI\SmokedAPI\build\32\SmokeAPI"
-         mkdir "D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI"
-    
-      - name: Configure (32-bit)
-        shell: cmd
-        run: |
-         cmake -G "Visual Studio 17 2022" ^
-         -A Win32 ^
-         -B "D:\a\SmokedAPI\SmokedAPI\build\32\SmokeAPI" ^
-         -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="D:\a\SmokedAPI\SmokedAPI\build\32\SmokeAPI\Release" ^
-         -DMODULE=SmokeAPI
-    
-      - name: Build (32-bit)
-        shell: cmd
-        run: |
-         cmake --build "D:\a\SmokedAPI\SmokedAPI\build\32\SmokeAPI" ^
-         --config Release ^
-         -- /m /v:detailed
-         
+
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -74,9 +52,7 @@ jobs:
             ${{ env.BUILD_DIR }}/CMakeCache.txt
             
       - name: Create build directory
-        shell: pwsh
-        run: |
-         New-Item -Path "${{ env.BUILD_DIR }}" -ItemType Directory -Force | Out-Null
+        run: mkdir -p "${{ env.BUILD_DIR }}"
         
       - name: Install and cache the latest CMake
         uses: lukka/get-cmake@latest
@@ -89,26 +65,13 @@ jobs:
       - name: Generate build files
         shell: cmd
         run: |
-          cmake -G "Visual Studio 17 2022" ^
-          -A x64 ^
-          -B "D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI" ^
-          -DCMAKE_POLICY_DEFAULT_CMP0048=NEW ^
-          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
-          -DMODULE=SmokeAPI
-         
-      - name: Build project
-        run: cmake --build "${{ env.BUILD_DIR }}" --config ${{ inputs.config }} --verbose
+         cmake -G "Visual Studio 17 2022" ^
+         -A x64 ^
+         -B "D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI" ^
+         -DCMAKE_POLICY_DEFAULT_CMP0048=NEW ^
+         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
+         -DMODULE=SmokeAPI
 
-      - name: Verify DLLs exist
-        shell: cmd
-        run: |
-          echo "Checking for DLLs in ${{ env.BUILD_DIR }}\${{ inputs.config }}"
-          dir "${{ env.BUILD_DIR }}\${{ inputs.config }}"
-          if not exist "${{ env.BUILD_DIR }}\${{ inputs.config }}\*.dll" (
-            echo "ERROR: No DLLs found!"
-            exit 1
-          )
-          
       - name: Print build outputs
         run: tree /f ${{ env.BUILD_DIR }}
 
@@ -116,9 +79,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.module }}-${{ matrix.arch }}
-          path: ${{ env.BUILD_DIR }}/${{ inputs.config }}/*.dll
-          if-no-files-found: error
-          
+          path: ${{ env.BUILD_DIR }}/${{ inputs.config }}/**/*.dll
+
   package-project:
     name: Package the artifacts into a release zip
     if: always() && startsWith(github.ref, 'refs/tags/')  # Run even if builds fail
