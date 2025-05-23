@@ -43,6 +43,10 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Create build directory
+        shell: pwsh
+        run: New-Item -Path "${{ env.BUILD_DIR }}" -ItemType Directory -Force | Out-Null    
+
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -65,12 +69,25 @@ jobs:
         shell: cmd
         run: |
          cmake -G "Visual Studio 17 2022" ^
-         -A x64 ^
-         -B "D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI" ^
-         -DCMAKE_POLICY_DEFAULT_CMP0048=NEW ^
-         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
-         -DMODULE=SmokeAPI
+          -A ${{ matrix.platform }} ^
+          -B "${{ env.BUILD_DIR }}" ^
+          -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="${{ env.BUILD_DIR }}\${{ inputs.config }}" ^
+          -DMODULE=${{ matrix.module }}
 
+      - name: Build project
+        shell: cmd
+        run: |
+          cmake --build "${{ env.BUILD_DIR }}" --config ${{ inputs.config }} --target ALL_BUILD
+
+      - name: Verify outputs
+        shell: cmd
+        run: |
+          dir /s "${{ env.BUILD_DIR }}"
+          if not exist "${{ env.BUILD_DIR }}\${{ inputs.config }}\*.dll" (
+            echo "ERROR: No DLLs found!"
+            exit 1
+          )
+          
       - name: Print build outputs
         run: tree /f ${{ env.BUILD_DIR }}
 
@@ -78,7 +95,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.module }}-${{ matrix.arch }}
-          path: D:\a\SmokedAPI\SmokedAPI\build\64\SmokeAPI\Release\**\*.dll
+          path: ${{ env.BUILD_DIR }}\${{ inputs.config }}\*.dll
+          if-no-files-found: error
 
   package-project:
     name: Package the artifacts into a release zip
